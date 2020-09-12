@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "time.h"
 
-#define NUM_COUNT 21
+#define SERIES_COUNT 5
 
 #define ERR_HANDLE { \
   fprintf(stderr, "Line %d: ", __LINE__); \
@@ -14,11 +14,18 @@ int main() {
   if (!file) ERR_HANDLE;
 
   srand(time(0));
-  for (int i = 0; i < NUM_COUNT; i++) {
-    int num = rand() / 10000000;
-    printf("%d ", num);
-    fwrite(&num, sizeof(i), 1, file);
+  int series = 0;
+  int current = rand() / 10000000;
+  while (series != SERIES_COUNT) {
+    int next = rand() / 10000000;
+    if (current > next)
+      series++;
+    printf("%d ", current);
+    fwrite(&current, sizeof(current), 1, file);
+    current = next;
   }
+
+  puts("");
 
   fclose(file);
   return 0;
