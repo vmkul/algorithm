@@ -24,7 +24,6 @@ struct File {
 
 void copy_file(FILE *src, FILE* dest) {
   int num;
-  puts("FILE A: ");
   while (fread(&num, sizeof(int), 1, src)) {
     fwrite(&num, sizeof(int), 1, dest);
   }
@@ -50,14 +49,11 @@ void get_fibs(int n, int *first, int *second) {
 void update_file(int current, File *file) {
   FILE *tmp = fopen("tmp", "wb");
   int num;
-  puts("UPDATE FILE: ");
-  printf("%d ", num);
   fwrite(&current, sizeof(int), 1, tmp);
   while (fread(&num, sizeof(int), 1, file->stream)) {
-    printf("%d ", num);
     fwrite(&num, sizeof(int), 1, tmp);
   }
-  puts("");
+  fclose(file->stream);
   remove(file->name);
   rename("tmp", file->name);
   file->stream = tmp;
@@ -78,15 +74,11 @@ void update_series(int *src1, int *src2, int* dest) {
 int write_series(int current, FILE *src, FILE *dest) {
   int last;
   int read;
-  puts("");
   do {
     last = current;
     fwrite(&current, sizeof(int), 1, dest);
-    puts("write_series");
-    printf("%d ", current);
     read = fread(&current, sizeof(int), 1, src); 
 } while (last <= current && read);
-  puts("");
 
   if (!read) return -1;
   return current;
@@ -101,8 +93,11 @@ void merge_series(File *src1, File *src2, File *dest) {
 
   while (first_read && second_read) {
     int minimal = fmin(current_first, current_second);
+    if (minimal == -1) {
+      puts("-1 detected");
+      printf("%d %d", current_first, current_second);
+    }
     fwrite(&minimal, sizeof(int), 1, dest->stream);
-    printf("%d ", minimal);
 
     if (minimal == current_first) {
       first_read = fread(&current_first, sizeof(int), 1, src1->stream);
@@ -119,7 +114,7 @@ void merge_series(File *src1, File *src2, File *dest) {
       if (current_second < minimal) {
         current_first = write_series(current_first, 
           src1->stream, dest->stream);
-         if (current_second == -1) {
+         if (current_first == -1) {
           first_read = 0;
           break;
         }
@@ -131,21 +126,29 @@ void merge_series(File *src1, File *src2, File *dest) {
   if (!first_read) {
     last_num = write_series(current_second, src2->stream, dest->stream);    
     freopen(src1->name, "wb", src1->stream);
-
+    
+    if (last_num == -1) {
+      freopen(src2->name, "wb", src2->stream);
+      return;
+    }
     update_file(last_num, src2);
   } else {
     last_num = write_series(current_first, src1->stream, dest->stream);
     freopen(src2->name, "wb", src2->stream);
 
+    if (last_num == -1) {
+      freopen(src1->name, "wb", src1->stream);
+      return;
+    }
+
     update_file(last_num, src1);
   }
-  puts("");
 }
 
 int check_sorted(FILE *file) {
   int current;
   int next;
-  fread(&current, sizeof(int), 1, file);
+  int read = fread(&current, sizeof(int), 1, file);
   while (fread(&next, sizeof(int), 1, file) > 0) {
     if (current > next) {
       fclose(file);
@@ -153,6 +156,7 @@ int check_sorted(FILE *file) {
     }
     current = next;
   }
+  if (!read) return 0;
   return 1;
 }
 
@@ -232,16 +236,18 @@ int main() {
   }
 
   freopen("numbers.bin", "wb", file);
-  freopen("A", "rb", A.stream);
-
-  //puts("SERIES: \n");
-  //printf("%d %d %d", series_in_file.A, series_in_file.B, series_in_file.C);
 
   if (series_in_file.A) {
+    puts("COPY A");
+    freopen("A", "rb", A.stream);
     copy_file(A.stream, file);
   } else if (series_in_file.B) {
+    puts("COPY B");
+    freopen("B", "rb", B.stream);
     copy_file(B.stream, file);
   } else {
+    puts("COPY C");
+    freopen("C", "rb", C.stream);
     copy_file(C.stream, file);
   }
 
