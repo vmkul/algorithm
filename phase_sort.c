@@ -2,7 +2,8 @@
 #include "stdlib.h"
 #include "time.h"
 
-#define NUM_COUNT 100
+#define NUM_COUNT 10
+#define SERIES_BUFFER_SIZE 1024
 
 #define ERR_HANDLE { \
   fprintf(stderr, "Line %d: ", __LINE__); \
@@ -21,34 +22,54 @@ int check_sorted(char *path) {
       fclose(file);
       return 0;
     }
+    current = next;
   }
   fclose(file);
   return 1;
 }
 
 int main() {
-  FILE *file = fopen("numbers.bin", "wb");
-  if (!file) ERR_HANDLE;
-
-  srand(time(0));
-  for (int i = 0; i < NUM_COUNT; i++) {
-    int num = rand();
-    fwrite(&num, sizeof(i), 1, file);
-  }
-  
-  fclose(file);
+  FILE *file;
+  FILE *A, *B, *C;
 
   file = fopen("numbers.bin", "rb");
   if (!file) ERR_HANDLE;
 
-  int number;
-  while (fread(&number, sizeof(number), 1, file) > 0) {
-    printf("%d ", number);
+  int current;
+  int next;
+
+  int *buffer = (int *) malloc(SERIES_BUFFER_SIZE);
+  int element_count = 1;
+  int index = 0;
+
+  fread(&current, sizeof(int), 1, file);
+
+  while (fread(&next, sizeof(int), 1, file) > 0) {
+    element_count++;
+    buffer[index++] = current;
+
+    if (current > next || element_count == NUM_COUNT) {
+      puts("Series: ");
+      for (int i = 0; i < index; i++) {
+        printf("%d ", buffer[i]);
+      }
+      puts("");
+
+      if (element_count == NUM_COUNT) {
+        if (next > current) {
+          printf("%d\n", next);
+        } else {
+          printf("Series: \n%d\n", next);
+        }
+      }
+
+      index = 0;
+    }
+    current = next;
   }
-  
-  puts("");
+
   fclose(file);
-  
+
   int result = check_sorted("numbers.bin");
   puts(result ? "Sorted" : "Not sorted");
   return 0;
