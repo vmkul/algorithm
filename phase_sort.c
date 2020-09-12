@@ -17,6 +17,20 @@ struct File_series {
   int C;
 } typedef File_series;
 
+struct File {
+  char *name;
+  FILE *stream;
+} typedef File;
+
+void copy_file(FILE *src, FILE* dest) {
+  int num;
+  puts("FILE A: ");
+  while (fread(&num, sizeof(int), 1, src)) {
+    fwrite(&num, sizeof(int), 1, dest);
+  }
+}
+
+
 void get_fibs(int n, int *first, int *second) {
   int current = 1;
   int next = 1;
@@ -31,6 +45,22 @@ void get_fibs(int n, int *first, int *second) {
       break;
     }
   }
+}
+
+void update_file(int current, File *file) {
+  FILE *tmp = fopen("tmp", "wb");
+  int num;
+  puts("UPDATE FILE: ");
+  printf("%d ", num);
+  fwrite(&current, sizeof(int), 1, tmp);
+  while (fread(&num, sizeof(int), 1, file->stream)) {
+    printf("%d ", num);
+    fwrite(&num, sizeof(int), 1, tmp);
+  }
+  puts("");
+  remove(file->name);
+  rename("tmp", file->name);
+  file->stream = tmp;
 }
 
 void update_series(int *src1, int *src2, int* dest) {
@@ -48,54 +78,71 @@ void update_series(int *src1, int *src2, int* dest) {
 int write_series(int current, FILE *src, FILE *dest) {
   int last;
   int read;
+  puts("");
   do {
     last = current;
     fwrite(&current, sizeof(int), 1, dest);
+    puts("write_series");
     printf("%d ", current);
     read = fread(&current, sizeof(int), 1, src); 
-} while (last <= current);
+} while (last <= current && read);
+  puts("");
+
+  if (!read) return -1;
   return current;
 }
 
-void merge_series(FILE *src1, FILE *src2, FILE *dest) {
+void merge_series(File *src1, File *src2, File *dest) {
   int current_first;
   int current_second;
 
-  int first_read = fread(&current_first, sizeof(int), 1, src1);  
-  int second_read = fread(&current_second, sizeof(int), 1, src2);
+  int first_read = fread(&current_first, sizeof(int), 1, src1->stream);  
+  int second_read = fread(&current_second, sizeof(int), 1, src2->stream);
 
   while (first_read && second_read) {
     int minimal = fmin(current_first, current_second);
-    fwrite(&minimal, sizeof(int), 1, dest);
+    fwrite(&minimal, sizeof(int), 1, dest->stream);
     printf("%d ", minimal);
 
     if (minimal == current_first) {
-      first_read = fread(&current_first, sizeof(int), 1, src1);
+      first_read = fread(&current_first, sizeof(int), 1, src1->stream);
       if (current_first < minimal) {
-        current_second = write_series(current_second, src2, dest);
+        current_second = write_series(current_second, 
+          src2->stream, dest->stream);
+        if (current_second == -1) {
+          second_read = 0;
+          break;
+        }
       }
     } else {
-      second_read = fread(&current_second, sizeof(int), 1, src2);
+      second_read = fread(&current_second, sizeof(int), 1, src2->stream);
       if (current_second < minimal) {
-        current_first = write_series(current_first, src1, dest);
+        current_first = write_series(current_first, 
+          src1->stream, dest->stream);
+         if (current_second == -1) {
+          first_read = 0;
+          break;
+        }
       }
     }
   }
-
+  
   int last_num;
   if (!first_read) {
-    last_num = write_series(current_second, src2, dest);
+    last_num = write_series(current_second, src2->stream, dest->stream);    
+    freopen(src1->name, "wb", src1->stream);
+
+    update_file(last_num, src2);
   } else {
-    last_num = write_series(current_first, src1, dest);
+    last_num = write_series(current_first, src1->stream, dest->stream);
+    freopen(src2->name, "wb", src2->stream);
+
+    update_file(last_num, src1);
   }
   puts("");
-  printf("%d", last_num);
 }
 
-int check_sorted(char *path) {
-  FILE *file = fopen(path, "rb");
-  if (!file) ERR_HANDLE;
-
+int check_sorted(FILE *file) {
   int current;
   int next;
   fread(&current, sizeof(int), 1, file);
@@ -106,18 +153,21 @@ int check_sorted(char *path) {
     }
     current = next;
   }
-  fclose(file);
   return 1;
 }
 
 int main() {
   FILE *file;
-  FILE *A, *B, *C;
+  File A, B, C;
 
   file = fopen("numbers.bin", "rb");
-  A = fopen("A", "wb");
-  B = fopen("B", "wb");
-  C = fopen("C", "wb");
+  A.stream = fopen("A", "wb");
+  B.stream = fopen("B", "wb");
+  C.stream = fopen("C", "wb");
+
+  A.name = "A";
+  B.name = "B";
+  C.name = "C";
 
   File_series series_in_file;
   
@@ -135,7 +185,7 @@ int main() {
   puts("File A");
 
   for (int i = 0; i < series_in_file.A;) {
-    fwrite(&current, sizeof(current), 1, A);
+    fwrite(&current, sizeof(current), 1, A.stream);
     printf("%d ", current);
     fread(&next, sizeof(int), 1, file);
 
@@ -147,38 +197,61 @@ int main() {
   puts("File B");
 
   do {
-    fwrite(&current, sizeof(current), 1, B);
+    fwrite(&current, sizeof(current), 1, B.stream);
     printf("%d ", current);
   } while (fread(&current, sizeof(int), 1, file));
 
   puts("");
-
-  freopen("A", "rb", A);
-  freopen("B", "rb", B);
-
   puts("File C");
 
   while ((series_in_file.A || series_in_file.B)
   && (series_in_file.A || series_in_file.C)
   && (series_in_file.B || series_in_file.C)) {
     if (!series_in_file.A) {
+      freopen(B.name, "rb", B.stream);
+      freopen(C.name, "rb", C.stream);
+      freopen(A.name, "wb", A.stream);
+
       update_series(&series_in_file.B, &series_in_file.C, &series_in_file.A);
-      merge_series(B, C, A);
+      merge_series(&B, &C, &A);
     } else if (!series_in_file.B) {
+      freopen(B.name, "wb", B.stream);
+      freopen(C.name, "rb", C.stream);
+      freopen(A.name, "rb", A.stream);
+      
       update_series(&series_in_file.A, &series_in_file.C, &series_in_file.B);
-      merge_series(A, C, B);
+      merge_series(&A, &C, &B);
     } else {
+      freopen(B.name, "rb", B.stream);
+      freopen(C.name, "wb", C.stream);
+      freopen(A.name, "rb", A.stream);
+
       update_series(&series_in_file.A, &series_in_file.B, &series_in_file.C);
-      merge_series(A, B, C);
+      merge_series(&A, &B, &C);
     }
-    break;
   }
 
-  fclose(file);
-  fclose(C);
-  fclose(B);
-  fclose(A);
-  int result = check_sorted("numbers.bin");
+  freopen("numbers.bin", "wb", file);
+  freopen("A", "rb", A.stream);
+
+  //puts("SERIES: \n");
+  //printf("%d %d %d", series_in_file.A, series_in_file.B, series_in_file.C);
+
+  if (series_in_file.A) {
+    copy_file(A.stream, file);
+  } else if (series_in_file.B) {
+    copy_file(B.stream, file);
+  } else {
+    copy_file(C.stream, file);
+  }
+
+  fclose(C.stream);
+  fclose(B.stream);
+  fclose(A.stream);
+
+  freopen("numbers.bin", "rb", file);
+  int result = check_sorted(file);
   puts(result ? "Sorted" : "Not sorted");
+  fclose(file);
   return 0;
 }
