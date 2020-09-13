@@ -3,7 +3,7 @@
 #include "time.h"
 #include "math.h"
 
-#define SERIES_COUNT 5
+#define SERIES_COUNT 165580141
 #define SERIES_BUFFER_SIZE 1024
 
 #define ERR_HANDLE { \
@@ -93,17 +93,14 @@ void merge_series(File *src1, File *src2, File *dest) {
 
   while (first_read && second_read) {
     int minimal = fmin(current_first, current_second);
-    if (minimal == -1) {
-      puts("-1 detected");
-      printf("%d %d", current_first, current_second);
-    }
     fwrite(&minimal, sizeof(int), 1, dest->stream);
 
     if (minimal == current_first) {
       first_read = fread(&current_first, sizeof(int), 1, src1->stream);
-      if (current_first < minimal) {
+      if (current_first < minimal || !first_read) {
         current_second = write_series(current_second, 
           src2->stream, dest->stream);
+
         if (current_second == -1) {
           second_read = 0;
           break;
@@ -111,7 +108,7 @@ void merge_series(File *src1, File *src2, File *dest) {
       }
     } else {
       second_read = fread(&current_second, sizeof(int), 1, src2->stream);
-      if (current_second < minimal) {
+      if (current_second < minimal || !second_read) {
         current_first = write_series(current_first, 
           src1->stream, dest->stream);
          if (current_first == -1) {
@@ -122,26 +119,12 @@ void merge_series(File *src1, File *src2, File *dest) {
     }
   }
   
-  int last_num;
   if (!first_read) {
-    last_num = write_series(current_second, src2->stream, dest->stream);    
     freopen(src1->name, "wb", src1->stream);
-    
-    if (last_num == -1) {
-      freopen(src2->name, "wb", src2->stream);
-      return;
-    }
-    update_file(last_num, src2);
+    update_file(current_second, src2);
   } else {
-    last_num = write_series(current_first, src1->stream, dest->stream);
     freopen(src2->name, "wb", src2->stream);
-
-    if (last_num == -1) {
-      freopen(src1->name, "wb", src1->stream);
-      return;
-    }
-
-    update_file(last_num, src1);
+    update_file(current_first, src1);
   }
 }
 
@@ -190,7 +173,6 @@ int main() {
 
   for (int i = 0; i < series_in_file.A;) {
     fwrite(&current, sizeof(current), 1, A.stream);
-    printf("%d ", current);
     fread(&next, sizeof(int), 1, file);
 
     if (current > next) i++;
@@ -202,7 +184,6 @@ int main() {
 
   do {
     fwrite(&current, sizeof(current), 1, B.stream);
-    printf("%d ", current);
   } while (fread(&current, sizeof(int), 1, file));
 
   puts("");
