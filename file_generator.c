@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "time.h"
 
-#define SERIES_COUNT 165580141
+#define SERIES_COUNT 100000000
 
 #define ERR_HANDLE { \
   fprintf(stderr, "Line %d: ", __LINE__); \
@@ -18,7 +18,7 @@ int main() {
   int current = rand();
   while (series != SERIES_COUNT) {
     int next = rand();
-    if (current > next)
+    //if (current > next)
       series++;
     //printf("%d ", current);
     fwrite(&current, sizeof(current), 1, file);
