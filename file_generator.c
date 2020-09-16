@@ -2,30 +2,17 @@
 #include "stdlib.h"
 #include "time.h"
 
-#define SERIES_COUNT 100000000
-
-#define ERR_HANDLE { \
-  fprintf(stderr, "Line %d: ", __LINE__); \
-  perror(""); \
-  exit(1); }
+#define NUMBER_COUNT 26214400
 
 int main() {
   FILE *file = fopen("numbers.bin", "wb");
-  if (!file) ERR_HANDLE;
 
   srand(time(0));
-  int series = 0;
-  int current = rand();
-  while (series != SERIES_COUNT) {
-    int next = rand();
-    //if (current > next)
-      series++;
-    //printf("%d ", current);
-    fwrite(&current, sizeof(current), 1, file);
-    current = next;
-  }
 
-  puts("");
+  for (int i = 0; i < NUMBER_COUNT; i++) {
+    int number = rand();
+    fwrite(&number, sizeof(number), 1, file);
+  }
 
   fclose(file);
   return 0;

@@ -3,8 +3,6 @@
 #include "time.h"
 #include "math.h"
 
-#define SERIES_COUNT 28657
-
 #define ERR_HANDLE { \
   fprintf(stderr, "Line %d: ", __LINE__); \
   perror(""); \
@@ -142,7 +140,38 @@ int check_sorted(FILE *file) {
   return 1;
 }
 
-int main() {
+int count_series(FILE *f) {
+  int series_count = 1;
+
+  int current;
+  int next;
+  fread(&current, sizeof(int), 1, f);
+  fread(&next, sizeof(int), 1, f);
+  
+  do {
+    if (next < current) series_count++;
+    current = next;
+  } while(fread(&next, sizeof(int), 1, f));
+
+  return series_count;
+}
+
+int get_closest_fib(int n) {
+  int current = 1;
+  int next = 1;
+
+  for (;;) {
+    if (next >= n) {
+      return next;
+      break;
+    }
+    int tmp = next;
+    next += current;
+    current = tmp;
+  }
+}
+
+int main() {  
   FILE *file;
   File A, B, C;
 
@@ -166,7 +195,23 @@ int main() {
   double cpu_time_used;
   start = clock();
 
-  get_fibs(SERIES_COUNT, &series_in_file.A, &series_in_file.B);
+  int series_count = count_series(file);
+  int resulting_series_count = get_closest_fib(series_count);
+
+  if (resulting_series_count == 1) resulting_series_count++;
+  
+  int empty_series = resulting_series_count - series_count;
+  freopen("numbers.bin", "ab", file);
+  int empty = -2;
+
+  for (int i = 0; i < empty_series; i++) {
+    fwrite(&empty, sizeof(int), 1, file);
+    empty--;
+  }
+  
+  freopen("numbers.bin", "rb", file);
+
+  get_fibs(resulting_series_count, &series_in_file.A, &series_in_file.B);
 
   series_in_file.C = 0;
 
@@ -190,9 +235,11 @@ int main() {
 
   puts("Sorting...\n");
 
+  int merge_count = 0;
   while ((series_in_file.A || series_in_file.B)
   && (series_in_file.A || series_in_file.C)
   && (series_in_file.B || series_in_file.C)) {
+    merge_count++;
     if (!series_in_file.A) {
       freopen(B.name, "rb", B.stream);
       freopen(C.name, "rb", C.stream);
@@ -217,6 +264,8 @@ int main() {
     }
   }
 
+  printf("Merge count: %d\n", merge_count);
+
   freopen("numbers.bin", "wb", file);
 
   if (series_in_file.A) {
@@ -236,6 +285,10 @@ int main() {
   fclose(C.stream);
   fclose(B.stream);
   fclose(A.stream);
+
+  remove(A.name);
+  remove(B.name);
+  remove(C.name);
 
   freopen("numbers.bin", "rb", file);
   int result = check_sorted(file);

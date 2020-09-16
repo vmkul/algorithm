@@ -5,7 +5,7 @@
 #include "quicksort.h"
 
 #define SERIES_BUFFER_SIZE 1073741824LLU
-#define NUMBER_COUNT 100000000
+#define NUMBER_COUNT 26214400
 
 #define ERR_HANDLE { \
   fprintf(stderr, "Line %d: ", __LINE__); \
@@ -214,8 +214,8 @@ int main() {
   if (resulting_series_count == 1) resulting_series_count++;
   
   int empty_series = resulting_series_count - series_count;
-  freopen(file.name, "a", file.stream);
-  int empty = -1;
+  freopen(file.name, "ab", file.stream);
+  int empty = -2;
 
   for (int i = 0; i < empty_series; i++) {
     fwrite(&empty, sizeof(int), 1, file.stream);
@@ -247,9 +247,11 @@ int main() {
 
   puts("Sorting...\n");
 
+  int merge_count = 0;
   while ((series_in_file.A || series_in_file.B)
   && (series_in_file.A || series_in_file.C)
   && (series_in_file.B || series_in_file.C)) {
+    merge_count++;
     if (!series_in_file.A) {
       freopen(B.name, "rb", B.stream);
       freopen(C.name, "rb", C.stream);
@@ -273,6 +275,8 @@ int main() {
       merge_series(&A, &B, &C);
     }
   }
+
+  printf("Merge count: %d\n", merge_count);
 
   freopen("numbers.bin", "wb", file.stream);
 
