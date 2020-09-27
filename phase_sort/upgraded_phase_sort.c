@@ -4,8 +4,8 @@
 #include "math.h"
 #include "quicksort.h"
 
-#define SERIES_BUFFER_SIZE 1073741824LLU
-#define NUMBER_COUNT 26214400
+#define SERIES_BUFFER_SIZE 2147483648LLU
+#define NUMBER_COUNT 268435456
 
 #define ERR_HANDLE { \
   fprintf(stderr, "Line %d: ", __LINE__); \

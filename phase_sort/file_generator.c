@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "time.h"
 
-#define NUMBER_COUNT 26214400
+#define NUMBER_COUNT 268435456
 
 int main() {
   FILE *file = fopen("numbers.bin", "wb");
