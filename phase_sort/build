@@ -1,0 +1,2 @@
+cc phase_sort.c -lm -Wall -Werror -o phase && cc file_generator.c -Wall -Werror -o gen &&
+cc -lm -Wall -Werror upgraded_phase_sort.c quicksort.c -o new
