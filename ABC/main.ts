@@ -5,9 +5,8 @@ const OBSERVER_BEES = 55;
 const VERTICES_COUNT = 300;
 
 const probability = 0.05;
-let MaxColor = 0;
 const AllColors = [];
-const UsedColors = [];
+const UsedColors = [ 0 ];
 
 const printMatrix = (matrix: number[][]) => {
   matrix.map(arr => console.log(JSON.stringify(arr)));
@@ -50,8 +49,21 @@ class WorkerBee {
 class ObserverBee {
   constructor(private matrix: number[][]) {}
 
-  color(vertex: number) : void {
+  color(vertex: number, colors: Map<number, number>) : void {
+    let color = Math.floor(Math.random() * UsedColors.length);
+    const row = this.matrix[vertex];
 
+    let reserved = 0;
+    for (let i = 0; i < row.length; i++) {
+      if (row[i] === 1 && colors.get(i) === color) {
+        if (reserved === UsedColors.length)
+          UsedColors.push(UsedColors[UsedColors.length - 1] + 1);
+        color = UsedColors[reserved++];
+        i = 0;
+      }
+    }
+
+    colors.set(vertex, color);
   }
 }
 
@@ -77,6 +89,7 @@ for (let i = 0; i < OBSERVER_BEES; i++)
 // Iteration
 
 const unvisited = [];
+const colors = new Map();
 const nectar = new Map();
 let totalNectar = 0;
 
@@ -94,3 +107,10 @@ workers.forEach(worker => {
 console.log(totalNectar);
 console.log(nectar);
 console.log(unvisited.length);
+
+for (let i = 0; i < 300; i++) {
+  observers[0].color(i, colors);
+}
+
+console.log(colors);
+console.log(UsedColors);
