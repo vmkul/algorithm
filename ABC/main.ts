@@ -63,8 +63,9 @@ class ObserverBee {
     for (let i = 0; i < row.length; i++) {
       if (row[i] === 1 && colors.get(i) === color) {
         if (reserved === UsedColors.length) {
-          color = Math.floor(Math.random() * 1000);
+          color = Math.max(...UsedColors) + 1;
           UsedColors.push(color);
+          break;
         }
         color = UsedColors[reserved++];
         i = 0;
@@ -96,7 +97,7 @@ for (let i = 0; i < WORKER_BEES; i++)
 const colors = new Map();
 let bestChromatic = Infinity;
 
-for (let iter = 0; iter < ITERATION_COUNT; iter++) {
+for (let iter = 1; iter <= ITERATION_COUNT; iter++) {
   const unvisited = [];
   const nectar = new Map();
 
@@ -118,10 +119,6 @@ for (let iter = 0; iter < ITERATION_COUNT; iter++) {
     for (const n of nectar.values()) 
       totalNectar += n.length;
 
-    for (const v of nectar.keys()) {
-      observers.pop().color(v, colors);
-    }
-
     for (const nectarVal of nectar.values()) {
       const pi = nectarVal.length / totalNectar;
       let count = pi * (OBSERVER_BEES - WORKER_BEES) - 1;
@@ -129,6 +126,10 @@ for (let iter = 0; iter < ITERATION_COUNT; iter++) {
         if (count-- > 0)
           observers.pop().color(v, colors);
       });
+    }
+
+    for (const v of nectar.keys()) {
+      observers.pop().color(v, colors);
     }
 
     nectar.clear();
@@ -139,7 +140,22 @@ for (let iter = 0; iter < ITERATION_COUNT; iter++) {
   bestChromatic = Math.min(UsedColors.length, bestChromatic);
 
   if (iter % 20 === 0) {
-    console.log(`Chromatic number: ${bestChromatic} (${UsedColors.length})`);
+    console.log(`Iteration: ${iter} Chromatic number: ${bestChromatic}`);
+    if (UsedColors.length >= bestChromatic && iter !== ITERATION_COUNT) {
+      colors.clear();
+      UsedColors = [ 0 ];
+    }
   }
 }
 
+// Solution check
+
+for (let i = 0; i < m.length; i++) {
+  for (let j = 0; j < m.length; j++) {
+    if (m[i][j] === 1 && i !== j) {
+      if (colors.get(i) === colors.get(j)) {
+        throw new Error('Invalid solution!');
+      }
+    }
+  }
+}
