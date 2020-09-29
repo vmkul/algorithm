@@ -1,1 +1,1 @@
-tsc main.ts && node main.js
+tsc --downlevelIteration main.ts && node main.js
