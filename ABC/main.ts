@@ -65,7 +65,6 @@ class ObserverBee {
         if (reserved === UsedColors.length) {
           color = Math.max(...UsedColors) + 1;
           UsedColors.push(color);
-          break;
         }
         color = UsedColors[reserved++];
         i = 0;
@@ -94,34 +93,37 @@ for (let i = 0; i < WORKER_BEES; i++)
 
 // Iteration
 
-const colors = new Map();
 let bestChromatic = Infinity;
+let bestResult;
 
 for (let iter = 1; iter <= ITERATION_COUNT; iter++) {
   const unvisited = [];
-  const nectar = new Map();
+  const colors = new Map();
 
   for (let i = 0; i < VERTICES_COUNT; i++)
     unvisited.push(i);
 
-  while (unvisited.length !== 0) {
+  while (colors.size !== VERTICES_COUNT) {
+    const nectar = new Map();
     for (let i = 0; i < OBSERVER_BEES; i++)
       observers.push(new ObserverBee(m));
 
     workers.forEach(worker => {
-      const vertex = Math.floor(Math.random() * unvisited.length);
-      unvisited.splice(unvisited.indexOf(vertex), 1);
+      const index = Math.floor(Math.random() * unvisited.length);
+      const vertex = unvisited[index];
+      unvisited.splice(index, 1);
       const value = worker.inspect(vertex);
       nectar.set(vertex, value);
     });
 
     let totalNectar = 0;
+
     for (const n of nectar.values()) 
       totalNectar += n.length;
 
     for (const nectarVal of nectar.values()) {
       const pi = nectarVal.length / totalNectar;
-      let count = pi * (OBSERVER_BEES - WORKER_BEES) - 1;
+      let count = Math.floor(pi * (OBSERVER_BEES - WORKER_BEES));
       nectarVal.forEach(v => {
         if (count-- > 0)
           observers.pop().color(v, colors);
@@ -131,29 +133,24 @@ for (let iter = 1; iter <= ITERATION_COUNT; iter++) {
     for (const v of nectar.keys()) {
       observers.pop().color(v, colors);
     }
-
-    nectar.clear();
+  }
+  
+  if (UsedColors.length < bestChromatic) {
+    bestChromatic = UsedColors.length;
+    bestResult = new Map(colors);
   }
 
-  const uniqueColors = new Set(colors.values());
-  UsedColors = Array.from(uniqueColors);
-  bestChromatic = Math.min(UsedColors.length, bestChromatic);
+  UsedColors = [ 0 ];
 
   if (iter % 20 === 0) {
     console.log(`Iteration: ${iter} Chromatic number: ${bestChromatic}`);
-    if (UsedColors.length >= bestChromatic && iter !== ITERATION_COUNT) {
-      colors.clear();
-      UsedColors = [ 0 ];
-    }
   }
 }
-
-// Solution check
 
 for (let i = 0; i < m.length; i++) {
   for (let j = 0; j < m.length; j++) {
     if (m[i][j] === 1 && i !== j) {
-      if (colors.get(i) === colors.get(j)) {
+      if (bestResult.get(i) === bestResult.get(j)) {
         throw new Error('Invalid solution!');
       }
     }
